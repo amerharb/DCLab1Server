@@ -3,6 +3,8 @@ package dclab1server;
 import java.io.*;
 import java.net.*;
 import java.io.File;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DCLab1Server
 {
@@ -40,10 +42,19 @@ public class DCLab1Server
 
                 System.out.println("Got request from " + socket.getInetAddress());
 
-                //BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 OutputStream out = new BufferedOutputStream(socket.getOutputStream());
+                PrintStream pout = new PrintStream(out);
 
-                // read first line of request (ignore the rest)
+                //read first line of request (ignore the rest)
+                while (!in.ready()){
+                    try {
+                        //nothing
+                        Thread.sleep(100);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(DCLab1Server.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
                 String request = in.readLine();
                 if (request == null) {
                     continue;
@@ -58,14 +69,13 @@ public class DCLab1Server
 
                 if (request.startsWith("cur")) {
                     System.out.println("got CUR");
+                    pout.print("you send me CUR");
+                    //out.write("you send me CUR".getBytes());
+                } else {
+                    System.out.println("got something else");
+                    out.write("got something else".getBytes());
                 }
-
-                // create data input/output streams
-                DataInputStream inputFromClient = new DataInputStream(socket.getInputStream());
-                DataOutputStream outputToClient = new DataOutputStream(socket.getOutputStream());
-                String in = inputFromClient.readUTF();
-                //outputToClient.writeChars("Test");
-                outputToClient.writeUTF("I got : " + in);
+                out.flush();
 
             } catch (IOException e) {
                 System.err.println(e);
