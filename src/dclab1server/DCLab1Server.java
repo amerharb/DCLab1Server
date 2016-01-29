@@ -40,7 +40,7 @@ public class DCLab1Server
 
                 System.out.println("Got request from " + socket.getInetAddress());
 
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                //BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 OutputStream out = new BufferedOutputStream(socket.getOutputStream());
 
                 // read first line of request (ignore the rest)
@@ -56,13 +56,13 @@ public class DCLab1Server
                     }
                 }
 
-                if (request.startsWith("cur")  {
+                if (request.startsWith("cur")) {
                     System.out.println("got CUR");
                 }
 
                 // create data input/output streams
-                //DataInputStream inputFromClient = new DataInputStream(socket.getInputStream());
-                //DataOutputStream outputToClient = new DataOutputStream(socket.getOutputStream());
+                DataInputStream inputFromClient = new DataInputStream(socket.getInputStream());
+                DataOutputStream outputToClient = new DataOutputStream(socket.getOutputStream());
                 String in = inputFromClient.readUTF();
                 //outputToClient.writeChars("Test");
                 outputToClient.writeUTF("I got : " + in);
