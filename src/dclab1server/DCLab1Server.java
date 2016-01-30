@@ -55,7 +55,7 @@ public class DCLab1Server
                     while (true) { //wait for input from clinet
 
                         while (!in.ready()) { //sleep until clinet send data or close socket
-                            if (socket.isClosed() || socket.) {
+                            if (socket.isClosed()) {
                                 continue SERVER_CONN; //wait for next connection
                             }
                             Thread.sleep(2000);
