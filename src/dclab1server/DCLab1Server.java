@@ -35,6 +35,7 @@ public class DCLab1Server
         System.out.println("Server is Started on port : " + port);
 
         Socket socket;
+        InputStreamReader inStRe;
         BufferedReader in;
         OutputStream out;
         PrintStream pout;
@@ -46,39 +47,53 @@ public class DCLab1Server
                 try {
                     // listen for a connection, only to 1 connection at the time
                     socket = serverSocket.accept();
+
                     System.out.println("Got request from " + socket.getInetAddress());
 
-                    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    inStRe = new InputStreamReader(socket.getInputStream());
+                    in = new BufferedReader(inStRe);
                     out = new BufferedOutputStream(socket.getOutputStream());
                     pout = new PrintStream(out);
-
                     while (true) { //wait for input from clinet
-
-                        while (!in.ready()) { //sleep until clinet send data or close socket
-                            if (socket.isClosed()) {
-                                continue SERVER_CONN; //wait for next connection
-                            }
-                            Thread.sleep(2000);
-                        }
-
                         String request = null;
-                        if (in.ready()) {
-                            request = in.readLine();
-                        }
+                        request = in.readLine();
 
+                        //when request is null it mean the clinet socket closed
                         if (request == null) {
-                            continue; //take next request
+                            continue SERVER_CONN; //take next connection
                         }
 
                         if (request.startsWith("cur")) {
                             System.out.println("got CUR");
-                            pout.println("you send me CUR");
+                            pout.println("Current Folder \n" + file.getAbsolutePath());
                         } else if (request.startsWith("list")) {
                             System.out.println("got List");
-                            pout.println("you send me list");
+                            String[] l = file.list();
+                            for (String s : l) {
+                                pout.println(s);
+                            }
                         } else if (request.startsWith("get")) {
                             System.out.println("got get");
-                            pout.println("you send me get");
+                            String filename = request.substring(4);
+                            File f = new File("." + File.separator + filename);
+                            if (f.exists()) {
+                                if (f.isFile()) {
+                                    pout.println("COPYING");
+                                    pout.flush();
+                                    FileInputStream fis = new FileInputStream(f);
+                                    final int bufferSize = 8192;
+                                    byte[] buffer = new byte[bufferSize];
+                                    int read;
+                                    while ((read = fis.read(buffer, 0, bufferSize)) != -1) {
+                                        out.write(buffer, 0, read);
+                                    }
+                                    out.flush();
+                                } else {
+                                    pout.println("its not filename");
+                                }
+                            } else {
+                                pout.println("file is not exists");
+                            }
                         } else {
                             System.out.println("unknow command");
                             pout.println("Unknown command:" + request);
@@ -93,7 +108,8 @@ public class DCLab1Server
 
                     }
                 } catch (IOException e) {
-                    System.out.println("error in connection");
+                    System.out.println(e);
+
                 }
             }
             //shutdown server
