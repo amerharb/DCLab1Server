@@ -68,10 +68,18 @@ public class DCLab1Server
                             pout.println("Current Folder \n" + file.getAbsolutePath());
                         } else if (request.startsWith("list")) {
                             System.out.println("got List");
-                            String[] l = file.list();
-                            for (String s : l) {
-                                pout.println(s);
-                            }
+//                            String[] l = file.list();
+//                            for (String s : l) {
+//                                pout.println(s);
+//                            }
+                              File[] files = file.listFiles();
+                              for (File f:files){
+                                  if (f.isDirectory()){
+                                      pout.println("[" + f.getName() + "]");
+                                  }else {
+                                      pout.println(f.getName());
+                                  }
+                              }
                         } else if (request.startsWith("get")) {
                             System.out.println("got get");
                             String filename = request.substring(4);
