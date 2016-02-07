@@ -1,5 +1,6 @@
 package dclab1server;
 
+import com.sun.webkit.Timer;
 import java.io.*;
 import java.net.*;
 import java.io.File;
@@ -14,7 +15,7 @@ public class DCLab1Server
     public static void main(String[] args) throws InterruptedException
     {
         int port = PORT;
-        if (args.length == 1) {
+        if (args.length > 0) {
             port = Integer.parseInt(args[0]);
         }
         new DCLab1Server(port);
@@ -28,89 +29,103 @@ public class DCLab1Server
         try {
             serverSocket = new ServerSocket(port);
         } catch (IOException e) {
-            System.err.println("Error in creation of the server socket");
+            System.out.println(e);
             System.exit(-1);
         }
 
         System.out.println("Server is Started on port : " + port);
 
         Socket socket;
-        InputStreamReader inStRe;
-        BufferedReader in;
-        OutputStream out;
-        PrintStream pout;
+
+        InputStreamReader isr;
+        BufferedReader br;
+
+        BufferedOutputStream bos;
+        PrintStream ps;
 
         try {
             SERVER_CONN:
             while (true) { //wait for connection 
                 socket = null;
                 try {
-                    // listen for a connection, only to 1 connection at the time
+                    // waiting for a connection, only one connection at the time
+                    System.out.println("Server is waiting for connection");
                     socket = serverSocket.accept();
+
+                    long lastRespons = System.currentTimeMillis(); // used for server clinet heart beat
 
                     System.out.println("Got request from " + socket.getInetAddress());
 
-                    inStRe = new InputStreamReader(socket.getInputStream());
-                    in = new BufferedReader(inStRe);
-                    out = new BufferedOutputStream(socket.getOutputStream());
-                    pout = new PrintStream(out);
+                    isr = new InputStreamReader(socket.getInputStream());
+                    br = new BufferedReader(isr);
+                    bos = new BufferedOutputStream(socket.getOutputStream());
+                    ps = new PrintStream(bos);
+
                     while (true) { //wait for input from clinet
                         String request = null;
-                        request = in.readLine();
+                        socket.setSoTimeout(20000); //wait 120 sec max
+                        try {
+                            System.out.println("Server is waiting for command");
+                            request = br.readLine();
+                            lastRespons = System.currentTimeMillis(); // used for server clinet heart beat
+                        } catch (Exception e) {
+                            System.out.println(e);
+                            ps.println("connnection drop TimeOut over 120 sec no command");
+                            continue SERVER_CONN; //wait for another connection 
+                        }
 
                         //when request is null it mean the clinet socket closed
                         if (request == null) {
+                            System.out.println("connection closed from clinet side");
                             continue SERVER_CONN; //take next connection
                         }
 
                         if (request.startsWith("cur")) {
                             System.out.println("got CUR");
-                            pout.println("Current Folder \n" + file.getAbsolutePath());
+                            ps.println("Current Folder \n" + file.getAbsolutePath());
                         } else if (request.startsWith("list")) {
                             System.out.println("got List");
 //                            String[] l = file.list();
 //                            for (String s : l) {
 //                                pout.println(s);
 //                            }
-                              File[] files = file.listFiles();
-                              for (File f:files){
-                                  if (f.isDirectory()){
-                                      pout.println("[" + f.getName() + "]");
-                                  }else {
-                                      pout.println(f.getName());
-                                  }
-                              }
+                            File[] files = file.listFiles();
+                            for (File f : files) {
+                                if (f.isDirectory()) {
+                                    ps.println("[" + f.getName() + "]");
+                                } else {
+                                    ps.println(f.getName() + "                " + f.length() / 1024 + " KB");
+                                }
+                            }
                         } else if (request.startsWith("get")) {
                             System.out.println("got get");
                             String filename = request.substring(4);
                             File f = new File("." + File.separator + filename);
                             if (f.exists()) {
                                 if (f.isFile()) {
-                                    pout.println("COPYING");
-                                    pout.flush();
+                                    ps.println("COPYING");
                                     FileInputStream fis = new FileInputStream(f);
-                                    final int bufferSize = 8192;
-                                    byte[] buffer = new byte[bufferSize];
-                                    int read;
-                                    while ((read = fis.read(buffer, 0, bufferSize)) != -1) {
-                                        out.write(buffer, 0, read);
+
+                                    byte[] b = new byte[8192];
+                                    int r;
+                                    while ((r = fis.read(b)) > 0) {
+                                        bos.write(b, 0, r);
                                     }
-                                    out.flush();
+                                    bos.flush();
                                 } else {
-                                    pout.println("its not filename");
+                                    ps.println("its not filename");
                                 }
                             } else {
-                                pout.println("file is not exists");
+                                ps.println("file is not exists");
                             }
                         } else {
                             System.out.println("unknow command");
-                            pout.println("Unknown command:" + request);
+                            ps.println("Unknown command:" + request);
                         }
-                        pout.flush();
-                        out.flush();
+                        ps.flush();
 
                         Thread.sleep(10);
-                        if (shutdownServer) { //this variable changed from another thread
+                        if (shutdownServer) { //this variable changed from another thread not yet coded
                             break SERVER_CONN;
                         }
 
@@ -120,14 +135,15 @@ public class DCLab1Server
 
                 }
             }
+
             //shutdown server
-            pout.close();
-            out.close();
-            in.close();
+            ps.close();
+            bos.close();
+            br.close();
             socket.close();
-            pout = null;
-            out = null;
-            in = null;
+            ps = null;
+            bos = null;
+            br = null;
             socket = null;
 
         } catch (IOException e) {
