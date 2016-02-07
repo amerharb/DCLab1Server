@@ -52,8 +52,6 @@ public class DCLab1Server
                     System.out.println("Server is waiting for connection");
                     socket = serverSocket.accept();
 
-                    long lastRespons = System.currentTimeMillis(); // used for server clinet heart beat
-
                     System.out.println("Got request from " + socket.getInetAddress());
 
                     isr = new InputStreamReader(socket.getInputStream());
@@ -63,11 +61,39 @@ public class DCLab1Server
 
                     while (true) { //wait for input from clinet
                         String request = null;
-                        socket.setSoTimeout(20000); //wait 120 sec max
+                        socket.setSoTimeout(120000); //wait 120 sec max
                         try {
                             System.out.println("Server is waiting for command");
-                            request = br.readLine();
-                            lastRespons = System.currentTimeMillis(); // used for server clinet heart beat
+                            long waitingCommandTime = System.currentTimeMillis();
+                            long pingTimer = System.currentTimeMillis();
+
+                            WAIT_COMMAND:
+                            do {
+                                //int c = 0;
+                                //int[] HR = new int[10];
+
+                                Thread.sleep(10);
+                                if (br.ready()) {
+                                    request = br.readLine();
+                                    waitingCommandTime = System.currentTimeMillis();
+                                    if (request.equals("AKG")) {
+                                        System.out.println("got AKG");
+
+                                        continue WAIT_COMMAND;
+                                    } else {
+                                        break WAIT_COMMAND;
+                                    }
+                                }
+                                if (System.currentTimeMillis() - pingTimer > 2000) {
+                                    ps.println("PING"); //send hear beat
+                                    ps.flush();
+                                    System.out.println("send PING");
+                                    pingTimer = System.currentTimeMillis();
+                                }
+                                if (System.currentTimeMillis() - waitingCommandTime > 15000) { // no response to ping for 15 sec
+                                    continue SERVER_CONN;
+                                }
+                            } while (true);
                         } catch (Exception e) {
                             System.out.println(e);
                             ps.println("connnection drop TimeOut over 120 sec no command");
@@ -85,10 +111,6 @@ public class DCLab1Server
                             ps.println("Current Folder \n" + file.getAbsolutePath());
                         } else if (request.startsWith("list")) {
                             System.out.println("got List");
-//                            String[] l = file.list();
-//                            for (String s : l) {
-//                                pout.println(s);
-//                            }
                             File[] files = file.listFiles();
                             for (File f : files) {
                                 if (f.isDirectory()) {
@@ -97,16 +119,23 @@ public class DCLab1Server
                                     ps.println(f.getName() + "                " + f.length() / 1024 + " KB");
                                 }
                             }
-                        } else if (request.startsWith("get")) {
+                        } else if (request.startsWith("get ")) {
                             System.out.println("got get");
                             String filename = request.substring(4);
                             File f = new File("." + File.separator + filename);
                             if (f.exists()) {
                                 if (f.isFile()) {
-                                    ps.println("COPYING");
+                                    ps.println("COPYING " + f.length());
                                     FileInputStream fis = new FileInputStream(f);
 
-                                    byte[] b = new byte[8192];
+                                    byte[] b;
+                                    final int defBufferSize = 8192;
+                                    if (f.length() < defBufferSize) {
+                                        b = new byte[(int) f.length()];
+                                    } else {
+                                        b = new byte[defBufferSize]; //max of buffer
+                                    }
+
                                     int r;
                                     while ((r = fis.read(b)) > 0) {
                                         bos.write(b, 0, r);
