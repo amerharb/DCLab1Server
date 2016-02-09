@@ -69,9 +69,6 @@ public class DCLab1Server
 
                             WAIT_COMMAND:
                             do {
-                                //int c = 0;
-                                //int[] HR = new int[10];
-
                                 Thread.sleep(10);
                                 if (br.ready()) {
                                     request = br.readLine();
@@ -86,12 +83,12 @@ public class DCLab1Server
                                 }
 //KILLPING 
                                 /*if (System.currentTimeMillis() - pingTimer > 2000) {
-                                    ps.println("PING"); //send hear beat
-                                    ps.flush();
-                                    System.out.println("send PING");
-                                    pingTimer = System.currentTimeMillis();
-                                }
-*/
+                                 ps.println("PING"); //send hear beat
+                                 ps.flush();
+                                 System.out.println("send PING");
+                                 pingTimer = System.currentTimeMillis();
+                                 }
+                                 */
 //                                if (System.currentTimeMillis() - waitingCommandTime > 15000) { // no response to ping for 15 sec
 //                                    continue SERVER_CONN;
 //                                }
@@ -111,10 +108,11 @@ public class DCLab1Server
                         if (request.startsWith("cur")) {
                             System.out.println("got CUR");
                             ps.println("Current Folder \n" + file.getAbsolutePath());
+                            ps.println();
                         } else if (request.startsWith("list")) {
                             System.out.println("got List");
                             File[] files = file.listFiles();
-                            ps.println("Number of Files and Folder : "+ files.length);
+                            ps.println("Number of Files and Folder : " + files.length);
                             for (File f : files) {
                                 if (f.isDirectory()) {
                                     ps.println("[" + f.getName() + "]");
@@ -122,6 +120,7 @@ public class DCLab1Server
                                     ps.println(f.getName() + "                " + f.length() / 1024 + " KB");
                                 }
                             }
+                            ps.println();
                         } else if (request.startsWith("get ")) {
                             System.out.println("got get");
                             String filename = request.substring(4).trim();
@@ -147,13 +146,16 @@ public class DCLab1Server
                                     bos.flush();
                                 } else {
                                     ps.println("its not filename");
+                                    ps.println();
                                 }
                             } else {
                                 ps.println("file is not exists");
+                                ps.println();
                             }
                         } else {
                             System.out.println("unknow command");
                             ps.println("Unknown command:" + request);
+                            ps.println();
                         }
                         ps.flush();
 
