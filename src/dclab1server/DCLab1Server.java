@@ -65,7 +65,7 @@ public class DCLab1Server
                         try {
                             System.out.println("Server is waiting for command");
                             long waitingCommandTime = System.currentTimeMillis();
-                            long pingTimer = System.currentTimeMillis();
+                            //KILLPING long pingTimer = System.currentTimeMillis();
 
                             WAIT_COMMAND:
                             do {
@@ -84,15 +84,17 @@ public class DCLab1Server
                                         break WAIT_COMMAND;
                                     }
                                 }
-                                if (System.currentTimeMillis() - pingTimer > 2000) {
+//KILLPING 
+                                /*if (System.currentTimeMillis() - pingTimer > 2000) {
                                     ps.println("PING"); //send hear beat
                                     ps.flush();
                                     System.out.println("send PING");
                                     pingTimer = System.currentTimeMillis();
                                 }
-                                if (System.currentTimeMillis() - waitingCommandTime > 15000) { // no response to ping for 15 sec
-                                    continue SERVER_CONN;
-                                }
+*/
+//                                if (System.currentTimeMillis() - waitingCommandTime > 15000) { // no response to ping for 15 sec
+//                                    continue SERVER_CONN;
+//                                }
                             } while (true);
                         } catch (Exception e) {
                             System.out.println(e);
@@ -112,6 +114,7 @@ public class DCLab1Server
                         } else if (request.startsWith("list")) {
                             System.out.println("got List");
                             File[] files = file.listFiles();
+                            ps.println("Number of Files and Folder : "+ files.length);
                             for (File f : files) {
                                 if (f.isDirectory()) {
                                     ps.println("[" + f.getName() + "]");
@@ -121,7 +124,8 @@ public class DCLab1Server
                             }
                         } else if (request.startsWith("get ")) {
                             System.out.println("got get");
-                            String filename = request.substring(4);
+                            String filename = request.substring(4).trim();
+                            System.out.println(filename);
                             File f = new File("." + File.separator + filename);
                             if (f.exists()) {
                                 if (f.isFile()) {
