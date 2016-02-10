@@ -8,9 +8,16 @@ import java.io.File;
 public class DCLab1Server
 {
 
-    private static final int PORT = 8000;
+    private static final int PORT = 8000; //Deafult port
     private ServerSocket serverSocket = null;
     private boolean shutdownServer = false; // this variable desigen to be changed from diffreant thread 
+
+    Socket socket;
+
+    BufferedReader br;
+
+    BufferedOutputStream bos;
+    PrintStream ps;
 
     public static void main(String[] args) throws InterruptedException
     {
@@ -33,15 +40,7 @@ public class DCLab1Server
             System.exit(-1);
         }
 
-        System.out.println("Server is Started on port : " + port);
-
-        Socket socket;
-
-        InputStreamReader isr;
-        BufferedReader br;
-
-        BufferedOutputStream bos;
-        PrintStream ps;
+        log("Server is Started on port : " + port);
 
         try {
             SERVER_CONN:
@@ -49,86 +48,82 @@ public class DCLab1Server
                 socket = null;
                 try {
                     // waiting for a connection, only one connection at the time
-                    System.out.println("Server is waiting for connection");
-                    socket = serverSocket.accept();
+                    log("Server is waiting for connection");
+                    socket = serverSocket.accept(); //code block here until connection come
 
-                    System.out.println("Got request from " + socket.getInetAddress());
+                    log("Got request from " + socket.getInetAddress());
 
-                    isr = new InputStreamReader(socket.getInputStream());
-                    br = new BufferedReader(isr);
-                    bos = new BufferedOutputStream(socket.getOutputStream());
-                    ps = new PrintStream(bos);
+                    br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                    bos = new BufferedOutputStream(socket.getOutputStream()); //will be used to send files
+                    ps = new PrintStream(bos); //will be used to send messages
 
                     while (true) { //wait for input from clinet
                         String request = null;
                         socket.setSoTimeout(120000); //wait 120 sec max
                         try {
-                            System.out.println("Server is waiting for command");
-                            long waitingCommandTime = System.currentTimeMillis();
-                            //KILLPING long pingTimer = System.currentTimeMillis();
+                            log("Server is waiting for command");
+                            long waitCommandTime = System.currentTimeMillis();
 
                             WAIT_COMMAND:
                             do {
                                 Thread.sleep(10);
                                 if (br.ready()) {
                                     request = br.readLine();
-                                    waitingCommandTime = System.currentTimeMillis();
+                                    waitCommandTime = System.currentTimeMillis();
                                     if (request.equals("AKG")) {
-                                        System.out.println("got AKG");
-
+                                        log("got AKG");
+                                        //ignore the response and take next command
                                         continue WAIT_COMMAND;
                                     } else {
                                         break WAIT_COMMAND;
                                     }
                                 }
-//KILLPING 
-                                /*if (System.currentTimeMillis() - pingTimer > 2000) {
-                                 ps.println("PING"); //send hear beat
-                                 ps.flush();
-                                 System.out.println("send PING");
-                                 pingTimer = System.currentTimeMillis();
-                                 }
-                                 */
-//                                if (System.currentTimeMillis() - waitingCommandTime > 15000) { // no response to ping for 15 sec
-//                                    continue SERVER_CONN;
-//                                }
+                                ping();
                             } while (true);
+
                         } catch (Exception e) {
                             System.out.println(e);
-                            ps.println("connnection drop TimeOut over 120 sec no command");
+                            sendLine("connnection drop TimeOut over 120 sec no command");
                             continue SERVER_CONN; //wait for another connection 
                         }
 
                         //when request is null it mean the clinet socket closed
                         if (request == null) {
-                            System.out.println("connection closed from clinet side");
+                            log("connection closed from clinet side");
                             continue SERVER_CONN; //take next connection
                         }
 
-                        if (request.startsWith("cur")) {
-                            System.out.println("got CUR");
+                        if (request.equals("cur")) {
+                            log("got CUR");
                             ps.println("Current Folder \n" + file.getAbsolutePath());
                             ps.println();
-                        } else if (request.startsWith("list")) {
-                            System.out.println("got List");
+                            ps.flush();
+                            
+                        } else if (request.equals("list")) {
+                            log("got List");
                             File[] files = file.listFiles();
-                            ps.println("Number of Files and Folder : " + files.length);
+                            sendLine("Number of Files and Folder : " + files.length);
                             for (File f : files) {
                                 if (f.isDirectory()) {
-                                    ps.println("[" + f.getName() + "]");
+                                    sendLine("[" + f.getName() + "]");
                                 } else {
-                                    ps.println(f.getName() + "                " + f.length() / 1024 + " KB");
+                                    sendLine(f.getName() + "\t\t\t" + f.length() / 1024 + " KB");
                                 }
                             }
-                            ps.println();
+                            sendLineTerminal();
+                            ps.flush();
+                            
                         } else if (request.startsWith("get ")) {
-                            System.out.println("got get");
+                            log("got get");
                             String filename = request.substring(4).trim();
                             System.out.println(filename);
                             File f = new File("." + File.separator + filename);
                             if (f.exists()) {
                                 if (f.isFile()) {
-                                    ps.println("COPYING " + f.length());
+                                    sendLine("COPYING " + f.length());
+                                    ps.flush();
+
                                     FileInputStream fis = new FileInputStream(f);
 
                                     byte[] b;
@@ -144,32 +139,36 @@ public class DCLab1Server
                                         bos.write(b, 0, r);
                                     }
                                     bos.flush();
-                                } else {
-                                    ps.println("its not filename");
-                                    ps.println();
+                                    b = null;
+                                } else { //its folder not file
+                                    sendLine("its not filename");
+                                    sendLineTerminal();
+                                    ps.flush();
                                 }
-                            } else {
-                                ps.println("file is not exists");
-                                ps.println();
+                            } else { //file not exists 
+                                sendLine("file is not exists");
+                                sendLineTerminal();
+                                ps.flush();
                             }
-                        } else {
-                            System.out.println("unknow command");
-                            ps.println("Unknown command:" + request);
-                            ps.println();
+
+                        } else { // unknown command
+                            log("unknow command");
+                            sendLine("Unknown command:" + request);
+                            sendLineTerminal();
+                            ps.flush();
                         }
-                        ps.flush();
 
                         Thread.sleep(10);
                         if (shutdownServer) { //this variable changed from another thread not yet coded
                             break SERVER_CONN;
                         }
 
-                    }
+                    } //waiting command loop 
                 } catch (IOException e) {
                     System.out.println(e);
 
                 }
-            }
+            } //waiting new connection loop
 
             //shutdown server
             ps.close();
@@ -186,6 +185,39 @@ public class DCLab1Server
             System.err.println(e);
         }
 
+    }
+
+    private void log(String msg)
+    {
+        System.out.println(msg);
+    }
+
+    long pingTimer;
+
+    private void ping()
+    {
+        if (true) {
+            return; //disable ping
+        }
+        final int interval = 2000;
+
+        if (System.currentTimeMillis() - pingTimer > interval) {
+            ps.println("PING"); //send hear beat
+            ps.flush();
+            log("send PING");
+            pingTimer = System.currentTimeMillis();
+        }
+
+    }
+
+    private void sendLine(String res)
+    {
+        ps.println(res);
+    }
+
+    private void sendLineTerminal()
+    {
+        ps.println();
     }
 
 }
