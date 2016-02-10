@@ -96,8 +96,8 @@ public class DCLab1Server
 
                         if (request.equals("cur")) {
                             log("got CUR");
-                            ps.println("Current Folder \n" + file.getAbsolutePath());
-                            ps.println();
+                            sendLine("Current Folder \n" + file.getAbsolutePath());
+                            sendLineTerminal();
                             ps.flush();
                             
                         } else if (request.equals("list")) {
